@@ -208,7 +208,10 @@ class DevtoolTest {
     }
 
     @Test
-    void testRemoveOldToolPaths() throws Exception {
+    void testRemoveDirectoryFromPaths() throws Exception {
+        if (!System.getProperty("os.name").toLowerCase().contains("windows")) {
+            return // the removeDirectoryFromPaths only works on windows as of now
+        }
 
         String path = "c:\\tools\\devtool\\1.18\\bin;c:\\tools\\git\\1.9.4\\bin;c:\\tools\\groovy\\2.3.6\\bin;c:\\tools\\maven\\3.2.3\\bin;c:\\tools\\jdk\\1.8.0.20.64\\bin;c:\\tools\\nodejs\\0.\n" +
                 "10.29\\.;c:\\tools\\gradle\\2.2\\bin;c:\\Users\\johndoe\\AppData\\Roaming\\npm\\;c:\\tools\\ant\\1.7.0\\bin;"
@@ -217,7 +220,10 @@ class DevtoolTest {
                 "10.29\\.;c:\\Users\\johndoe\\AppData\\Roaming\\npm\\;c:\\tools\\ant\\1.7.0\\bin;"
 
         assertEquals(expectedPath, devtool.removeDirectoryFromPaths("c:\\tools\\gradle", path))
+    }
 
+    @Test
+    void testRemoveOldToolPaths() throws Exception {
         def pathBefore = "some" + pathSepChar
         def pathAfter = "anotherpath" + sepChar + "place" + pathSepChar
         def userPath = pathBefore + mockedDestDir + sepChar + "toolToRemove" + sepChar + "1.0" + pathSepChar + pathAfter

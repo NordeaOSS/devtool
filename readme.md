@@ -14,6 +14,9 @@ Run this for building and running tests
 
     gradlew test
 
+# CI builds can be found here
+https://travis-ci.org/NordeaOSS/devtool
+
 # About the code
 Curently all the code is actually only in two files. Yeah we know - not very structured and OO'ish
 And cleanup could definitely be done. But it works and there is not a lot of code. If much is going to be added

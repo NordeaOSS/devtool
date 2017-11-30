@@ -27,10 +27,11 @@ dependencies {
     testCompile 'junit:junit:4.12'
 }
 
-task copyToHmm(dependsOn: 'build', type: Copy) {
-    from 'build/libs'
-    into 'c:/hmm/devtool/lib'
-    include('**/*.jar')
+test {
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
 }
 
 applicationDistribution.from("./lib") {

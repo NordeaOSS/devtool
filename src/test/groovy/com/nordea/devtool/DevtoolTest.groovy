@@ -224,6 +224,9 @@ class DevtoolTest {
 
     @Test
     void testRemoveOldToolPaths() throws Exception {
+        if (!System.getProperty("os.name").toLowerCase().contains("windows")) {
+            return // the removeDirectoryFromPaths only works on windows as of now
+        }
         def pathBefore = "some" + pathSepChar
         def pathAfter = "anotherpath" + sepChar + "place" + pathSepChar
         def userPath = pathBefore + mockedDestDir + sepChar + "toolToRemove" + sepChar + "1.0" + pathSepChar + pathAfter

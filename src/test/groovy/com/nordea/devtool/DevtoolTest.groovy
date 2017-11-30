@@ -12,9 +12,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
-import static org.junit.Assert.assertEquals
-import static org.junit.Assert.assertFalse
-import static org.junit.Assert.assertTrue
+import static org.junit.Assert.*
 
 class DevtoolTest {
     def sepChar = File.separatorChar
@@ -124,7 +122,9 @@ class DevtoolTest {
         ] as Devtool
 
         createSourceAndDestDirs()
-        localDevtool.setupTool("ant", "1.1.2")
+        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            localDevtool.setupTool("ant", "1.1.2")
+        }
     }
 
     @Test

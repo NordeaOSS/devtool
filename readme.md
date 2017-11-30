@@ -24,8 +24,8 @@ All the magic happens in:
 
 It uses the groovy CliBuilder to parse the params from the command line and to do formatting etc
 
-Devtool fetches all the tools from a "file repository". Currently there is only one provides which is 
-nexus.
+Devtool fetches all the tools from a "file repository". Currently there is only one file provider, implemented which is 
+a nexus server (maven repository).
 
 The local part is setup and handled using the windows command `setx` that enables the updating of the users
 local path. That is how devtool can add stuff to the local user path.

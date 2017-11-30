@@ -70,6 +70,7 @@ class DevtoolTest {
     @Test
     void testLogArgs() throws Exception {
         devtool.logArgs("test.txt", "test args", "John Doe")
+        new File('test.txt').deleteOnExit()
     }
 
     @Test

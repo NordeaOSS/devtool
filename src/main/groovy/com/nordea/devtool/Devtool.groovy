@@ -53,7 +53,7 @@ class Devtool {
     @SuppressWarnings("GroovyAssignabilityCheck")
     void parseInput(String[] args) {
         def cli = new CliBuilder(usage: 'devtool [command] [options]', header: 'Options:', width: 98, footer: '\n' +
-                'Docs and FAQ:\n' + ansi().fgBrightBlue().a("https://github.com/NordeaOSS/devtool/usage.md\n").reset() +
+                'Docs and FAQ:\n' + ansi().fgBrightBlue().a("https://github.com/NordeaOSS/devtool/blob/master/usage.md\n").reset() +
                 '\nChangelog:\n' + ansi().fgBrightBlue().a('"See the changelog.md in your local devtool installation"\n').reset() +
                 '\nAdd a watch on the tools/versions blog:\n' + ansi().fgBrightBlue().a("$CONFLUENCE_URL/pages/viewrecentblogposts.action?key=" + CONFLUENCE_SPACENAME).reset())
 

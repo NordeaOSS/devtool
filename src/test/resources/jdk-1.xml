@@ -1,0 +1,11 @@
+<settings>
+	<paths>
+		<path>bin</path>
+	</paths>
+
+	<toolvars>
+		<toolvar>JAVA_HOME</toolvar>
+		<toolvar>JDK_HOME</toolvar>
+	</toolvars>
+
+</settings>

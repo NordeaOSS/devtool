@@ -1,0 +1,46 @@
+/*
+ *
+ *  * Copyright (c) 2017. Nordea Bank AB
+ *  * Licensed under the MIT license (LICENSE.txt)
+ *
+ */
+
+apply plugin: 'groovy'
+apply plugin: 'application'
+
+
+repositories {
+    mavenCentral()
+}
+
+allprojects {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}
+
+dependencies {
+    compile 'org.codehaus.groovy:groovy-all:2.4.12'
+    compile 'commons-cli:commons-cli:1.4'
+    compile 'org.apache.ant:ant:1.9.4'
+    compile 'org.fusesource.jansi:jansi:1.16'
+
+    testCompile 'junit:junit:4.12'
+}
+
+task copyToHmm(dependsOn: 'build', type: Copy) {
+    from 'build/libs'
+    into 'c:/hmm/devtool/lib'
+    include('**/*.jar')
+}
+
+applicationDistribution.from("./lib") {
+    include "curl.exe"
+    include "curl-ca-bundle.crt"
+    into("bin")
+}
+
+applicationDistribution.from(".") {
+    include "changelog.md"
+}
+
+mainClassName = "com.nordea.devtool.Devtool"

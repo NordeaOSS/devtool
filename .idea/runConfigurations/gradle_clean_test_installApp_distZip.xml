@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="gradle:clean test installApp distZip" type="GroovyScriptRunConfiguration" factoryName="Groovy">
+    <module name="devtool" />
+    <setting name="path" value="file://$PROJECT_DIR$/build.gradle" />
+    <setting name="vmparams" value="" />
+    <setting name="params" value="clean test installApp distZip" />
+    <setting name="workDir" value="file://$PROJECT_DIR$" />
+    <setting name="debug" value="false" />
+    <RunnerSettings RunnerId="Run" />
+    <ConfigurationWrapper RunnerId="Run" />
+    <method>
+      <option name="Make" enabled="false" />
+    </method>
+  </configuration>
+</component>

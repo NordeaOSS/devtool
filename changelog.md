@@ -1,0 +1,63 @@
+# Changelog
+
+- 1.35
+    - Updated gradle from 4.0.1 to 4.3.1
+    - Updated groovy from 2.4.11 to 2.4.12
+    - Added uninstall command
+    - Now devtool creates a file of all tools and versions and uploads to nexus with the upload command
+      Used for the devtool -list command and a lot faster
+- 1.34
+    - Fixed url to Docs & FAQ
+    - Ignoring selfsigned certificates
+- 1.33
+    - Fixed url to the changelog
+    - Added the info command to open up a tools corresponding info page
+- 1.32
+    - Fixed an issue in the sorting method resulting in jdk 1.9 not being the latest one
+- 1.31
+    - Fixed issue with creating blogpost even if tool is not uploaded because of an error when uploading to nexus
+- 1.30
+    - Updated url's to confluence
+- 1.29
+    - Minor spellings
+    - Added color output to enhance readability
+- 1.28
+    - Minor refac.
+    - Added link to the devtool blog in the footer of usage info
+- 1.27
+    - added code to create a blogpost when uploading new tools
+    - change password handling to ask for it using console to avoid password being saved in command line history
+    - Started on the code to upload a list of tools and versions to nexus to speed up when using for example devtool -list
+    - Minor spellings
+    - minor text cleanups
+    - updated gradle version
+    - updated roadmap.md
+    - converted changelog to changelog.md
+    - Added link to changelog in stash in the usage text
+    - updated to use jdk 1.8
+    - updated dependency versions
+    - updated build.gradle to include changelog.md and curl.exe in the distribution
+- 1.26 Added more upload validation of the zip file to upload
+- 1.25 Added upload functionality
+- 1.24
+    - Added link to confluence page with faq and help to footer of help/usage
+    - Fixed error in updateall command
+    - Updated ant version
+    - Readded/fixed ignored unit tests
+- 1.23 Fixed install and setup commands as the CliBuilder has changed way of working in new groovy version
+- 1.22 Now logging to local file in the users homedir. This is primarily for debugging issues or when users are experiencing problems
+- 1.21
+- 1.20
+- 1.19 -listuninstalled renamed to listnotinstalled
+- 1.18 -listuninstalled
+- 1.17
+    - Fixed statistics logging
+    - Removed old maven pom file
+    - Removed unused jline dependency
+- 1.16 Added statistics logging
+- 1.15 Yet another minor textcorrection
+- 1.14 Minor correction in text
+- 1.13 Added UpToDate check for devtool
+- 1.12 Updated so that the list works under jdk 1.8
+- 1.11 Added the setup command to support switching between versions
+- 1.10 Fixed problem with list updated

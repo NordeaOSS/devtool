@@ -1,5 +1,7 @@
 # Changelog
-
+- 1.37
+    - Bumped version to 1.37, no code changes
+- 1.36
 - 1.35
     - Updated gradle from 4.0.1 to 4.3.1
     - Updated groovy from 2.4.11 to 2.4.12

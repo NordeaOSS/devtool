@@ -18,7 +18,7 @@ class Devtool {
     private static def sepChar = File.separatorChar
     private static def pathSepChar = File.pathSeparatorChar
     private def devtoolName = "devtool"
-    def devToolVersion = "1.35"
+    def devToolVersion = "1.37"
     boolean debugOutput = false
 
     static def CONTACT_PERSON

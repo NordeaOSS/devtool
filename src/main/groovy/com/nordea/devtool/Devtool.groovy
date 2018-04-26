@@ -434,30 +434,100 @@ class Devtool {
 
         def paddingSize = 25
         def lineIndex = 0
+        def consoleWidth = consoleWidth()
 
         tempFile.eachLine { line ->
             def toolAndVersionsArray = line.split(';')
             def toolName = toolAndVersionsArray[0]
-
-            if (lineIndex++ % 2 == 0) {
-                output.append(toolName.padRight(paddingSize, ' -'))
-            } else {
-                output.append(ansi().fgCyan().a(toolName.padRight(paddingSize, ' -')).reset())
-            }
+            String toolText = toolName.padRight(paddingSize, ' -')
 
             def toolVersions = toolAndVersionsArray.toList().subList(1, toolAndVersionsArray.toList().size())
 
+            def row = new StringBuilder(toolText)
+            def longestVersionLength = calculateLongestVersionLength(toolVersions)
             toolVersions.eachWithIndex { version, toolIndex ->
-                if (lineIndex % 2 == 0) {
-                    output.append(" " + version + " ")
+                // pad each version numbers so that they align
+                def text = " " + version.padRight(longestVersionLength) + " "
+                if (row.length() + text.length() < consoleWidth) {
+                    row.append(text)
                 } else {
-                    output.append(" " + ansi().fgCyan().a(version).reset() + " ")
+                    if (lineIndex % 2 == 0) {
+                        output.append(ansi().fgCyan().a(row).reset())
+                    } else {
+                        output.append(row)
+                    }
+                    // start a new row and add padding to align version numbers
+                    row = new StringBuilder("\n")
+                    row.append(" ".padLeft(paddingSize, ' '))
+                }
+            }
+            // append rest of the row, this will contain contents for the last row
+            if (row.toString().trim().length() > 0) {
+                if (lineIndex % 2 == 0) {
+                    output.append(ansi().fgCyan().a(row).reset())
+                } else {
+                    output.append(row)
                 }
             }
             output.append('\n')
+            lineIndex++
         }
 
         return output
+    }
+
+    int calculateLongestVersionLength(List<String> toolVersions) {
+        def longestVersionLength = 0
+        toolVersions.each { version ->
+            if (version.length() > longestVersionLength) {
+                longestVersionLength = version.length()
+            }
+        }
+        return longestVersionLength
+    }
+
+    int consoleWidth() {
+        def columns = bashColumns()
+        if (columns == 0) {
+            columns = cmdColumns()
+        }
+        // use some reasonable minimum width. 25 is used padding.
+        if (columns < 60) {
+            columns = 80
+        }
+        return columns
+    }
+
+    int bashColumns() {
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder("tput", "cols");
+            processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
+            def process = processBuilder.start()
+            def output = process.in.text
+            process.destroy()
+            if (output?.isInteger()) {
+                return output.toInteger()
+            }
+        } catch (all) {
+        }
+        return 0
+    }
+
+    int cmdColumns() {
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder("cmd.exe", "/c", "mode con");
+            processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
+            def process = processBuilder.start()
+            def output = process.in.text
+            process.destroy()
+            // multiline matcher that picks number of columns
+            def matcher = (output =~ /(?ms).*Columns:\s+(\d+).*/)
+            if (matcher.matches()) {
+                return matcher.group(1).toInteger()
+            }
+        } catch (all) {
+        }
+        return 0
     }
 
     /**

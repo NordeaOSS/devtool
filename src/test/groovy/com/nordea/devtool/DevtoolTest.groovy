@@ -7,6 +7,7 @@
 
 package com.nordea.devtool
 
+import groovy.transform.TypeChecked
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -14,6 +15,7 @@ import org.junit.rules.TemporaryFolder
 
 import static org.junit.Assert.*
 
+@TypeChecked
 class DevtoolTest {
     def sepChar = File.separatorChar
     def pathSepChar = File.pathSeparatorChar
@@ -38,11 +40,10 @@ class DevtoolTest {
 
     @Before
     void init() {
+        ToolsRepository repository = createMockedRepository()
+
+
         devtool = new Devtool() {
-            @Override
-            String getToolsSourceDir() {
-                return mockedSrcDir
-            }
 
             @Override
             String getToolsDestinationDir() {
@@ -63,7 +64,11 @@ class DevtoolTest {
             void installTool(String toolName, String toolVersion) {
             }
         }
+
+        devtool.toolsRepository = repository
+
     }
+
 
     @Test
     void testLogArgs() throws Exception {
@@ -76,7 +81,7 @@ class DevtoolTest {
         def folder = srcFolder.newFolder("toolWithoutVersion")
         new File(folder, "someSubdir").mkdir()
         new File(folder, "someSubdir2").mkdir()
-        assertEquals("0", devtool.getLatestVersionForToolFromLocal(devtool.getToolsSourceDir(), "toolWithoutVersion"))
+        assertEquals("0", devtool.getLatestVersionForToolFromLocal(devtool.toolsRepository.getToolsSourceDir(), "toolWithoutVersion"))
     }
 
     @Test
@@ -95,7 +100,7 @@ class DevtoolTest {
     @Test
     void testGetLatestVersionForLocalTool() throws Exception {
         setupMavenToolWithMultipleVersions()
-        assertEquals("1.1.10", devtool.getLatestVersionForToolFromLocal(devtool.getToolsSourceDir(), "maven"))
+        assertEquals("1.1.10", devtool.getLatestVersionForToolFromLocal(devtool.toolsRepository.getToolsSourceDir(), "maven"))
     }
 
     @Test
@@ -239,15 +244,51 @@ class DevtoolTest {
         assertEquals("c:/somte;", devtool.removeOldToolPaths("git", userPathGit))
     }
 
-    private void setupSingleToolWithOneVersion() {
-        def toolFolder = srcFolder.newFolder("maven")
-        new File(toolFolder.getAbsolutePath() + File.separatorChar + "1.0").mkdir()
-    }
-
     private void setupMavenToolWithMultipleVersions() {
         def toolFolder = srcFolder.newFolder("maven")
         new File(toolFolder.getAbsolutePath() + File.separatorChar + "1.1.1").mkdir()
         new File(toolFolder.getAbsolutePath() + File.separatorChar + "1.1.10").mkdir()
         new File(toolFolder.getAbsolutePath() + File.separatorChar + "1.1.2").mkdir()
     }
+
+    private ToolsRepository createMockedRepository() {
+        def repository = new ToolsRepository() {
+            @Override
+            void uploadToolsAndVersionsFile(String userName, String password, File buildToolsAndVersionsFile) {
+
+            }
+
+            @Override
+            void deleteOldToolsAndVersionsFile(String userName, String password) {
+
+            }
+
+            @Override
+            void downloadToolsAndVersionsToTempfile(File tempFile) {
+
+            }
+
+            @Override
+            String getToolsSourceDir() {
+                return mockedSrcDir
+            }
+
+            @Override
+            boolean isUserNameAndPasswordNeededForRepository() {
+                return false
+            }
+
+            @Override
+            void uploadTool(String toolName, String toolVersion, String toolpath, String username, char[] password) {
+
+            }
+
+            @Override
+            String getRepositoryName() {
+                return "unit test"
+            }
+        }
+        repository
+    }
+
 }

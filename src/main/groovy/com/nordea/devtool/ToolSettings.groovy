@@ -7,6 +7,9 @@
 
 package com.nordea.devtool
 
+import groovy.transform.TypeChecked
+
+@TypeChecked
 class ToolSettings {
 
     /**

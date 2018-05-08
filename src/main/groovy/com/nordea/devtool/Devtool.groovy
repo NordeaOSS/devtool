@@ -17,30 +17,44 @@ import static org.fusesource.jansi.Ansi.ansi
 class Devtool {
     private static def sepChar = File.separatorChar
     private static def pathSepChar = File.pathSeparatorChar
-    private def devtoolName = "devtool"
-    def devToolVersion = "1.37"
-    boolean debugOutput = false
+    private String devtoolName = "devtool"
+    String devToolVersion = "2.0.0"
+    private Debugger debugger = new Debugger(false)
+    private ConfluenceWrapper confluenceWrapper
 
-    static def CONTACT_PERSON
-    static def CONFLUENCE_SPACENAME
-    static def CONFLUENCE_URL
-    static def NEXUS_SERVER_URL
-    static def NEXUS_REPOSITORY
+    static String CONTACT_PERSON
+    static String CONFLUENCE_SPACENAME
+    static String CONFLUENCE_URL
+    static String NEXUS_SERVER_URL
+    static String NEXUS_REPOSITORY
+
+    ToolsRepository toolsRepository
 
     static void main(String[] args) {
         loadProperties()
+
         AnsiConsole.systemInstall()
 
         Devtool devtool = new Devtool()
+        devtool.toolsRepository = devtool.setupRepository()
+        if (CONFLUENCE_URL != null) {
+            devtool.confluenceWrapper = new ConfluenceWrapper(CONFLUENCE_URL, CONFLUENCE_SPACENAME, new CurlWrapper(devtool.debugger))
+        }
         devtool.checkForUpdatesToDevTool()
         devtool.parseInput(args)
 
         AnsiConsole.systemUninstall()
     }
 
+    ToolsRepository setupRepository() {
+        def repository = new NexusRepository(NEXUS_REPOSITORY, NEXUS_SERVER_URL, debugger)
+
+        return repository
+    }
+
     static def loadProperties() {
         def properties = new Properties()
-        this.getClass().getResource('/devtool.conf').withInputStream {
+        this.getClass().getResource('/devtool.properties').withInputStream {
             properties.load(it)
         }
         CONTACT_PERSON = properties.getProperty("CONTACT_PERSON")
@@ -52,10 +66,7 @@ class Devtool {
 
     @SuppressWarnings("GroovyAssignabilityCheck")
     void parseInput(String[] args) {
-        def cli = new CliBuilder(usage: 'devtool [command] [options]', header: 'Options:', width: 98, footer: '\n' +
-                'Docs and FAQ:\n' + ansi().fgBrightBlue().a("https://github.com/NordeaOSS/devtool/blob/master/usage.md\n").reset() +
-                '\nChangelog:\n' + ansi().fgBrightBlue().a('"See the changelog.md in your local devtool installation"\n').reset() +
-                '\nAdd a watch on the tools/versions blog:\n' + ansi().fgBrightBlue().a("$CONFLUENCE_URL/pages/viewrecentblogposts.action?key=" + CONFLUENCE_SPACENAME).reset())
+        def cli = new CliBuilder(usage: 'devtool [command] [options]', header: 'Options:', width: 98, footer: getFooter())
 
         cli.with {
             h longOpt: 'help', 'print this message'
@@ -67,7 +78,7 @@ class Devtool {
             list args: 0, 'Lists all the possible tools'
             setup args: 2, valueSeparator: ' ', argName: 'toolname version', 'Sets up the given tools path with the specific version. For example: "jdk 1.5.0"'
             debug args: 0, 'Adds debug info'
-            upload args: 1, valueSeparator: ' ', argName: 'path to the zipped tool', 'Uploads a new tool to nexus'
+            upload args: 1, valueSeparator: ' ', argName: 'path to the zipped tool', 'Uploads a new tool to ' + toolsRepository.getRepositoryName()
             listnotinstalled args: 0, 'Shows the list of available tools not installed in any version'
         }
 
@@ -77,7 +88,7 @@ class Devtool {
         }
 
         if (options.debug) {
-            debugOutput = true
+            debugger.debugEnabled = true
         }
 
         if (options.info) {
@@ -114,7 +125,7 @@ class Devtool {
             println listNotInstalled()
 
         } else if (options.upload) {
-            uploadTool(options.upload)
+            uploadToolFromFile(options.upload)
         } else {
             printUsage(cli)
         }
@@ -122,42 +133,38 @@ class Devtool {
         logArgs(args)
     }
 
+    private String getFooter() {
+        def footer = '\nDocs and FAQ:\n' + ansi().fgBrightBlue().a("https://github.com/NordeaOSS/devtool/blob/master/usage.md\n").reset() +
+                '\nChangelog:\n' + ansi().fgBrightBlue().a('"See the changelog.md in your local devtool installation"\n').reset()
+
+        if (confluenceWrapper != null) {
+            footer += '\nAdd a watch on the tools/versions blog:\n' + ansi().fgBrightBlue().a("$CONFLUENCE_URL/pages/viewrecentblogposts.action?key=" + CONFLUENCE_SPACENAME).reset()
+        }
+
+        return footer
+    }
+
     def openToolInfoPage(String toolName) {
-        debugln "show info for toolName = $toolName"
+        debugger.debugln "show info for toolName = $toolName"
         "cmd /c \"start $CONFLUENCE_URL/display/$CONFLUENCE_SPACENAME/tools+$toolName\"".execute()
     }
 
-    def createBlogPost(String toolName, String toolVersion, String confluenceUsername, String confluencePassword) {
-        println "Creating blogpost..."
-
-        def uploadCommand = """curl -g -k -u $confluenceUsername:$confluencePassword -H "Content-Type:application/json" -X POST -d "{\\"type\\":\\"blogpost\\",\\"title\\":\\"new tool/version added to devtool: $toolName-$toolVersion\\",\\"space\\":{\\"key\\":\\"$CONFLUENCE_SPACENAME\\"},\\"body\\":{\\"storage\\":{\\"value\\":\\"install new version with: devtool -install $toolName\\",\\"representation\\":\\"storage\\"}}}" $CONFLUENCE_URL/rest/api/content/"""
-        def process = runCurlCommand(uploadCommand)
-        if (process.exitValue() != 0) {
-            println "Problem with creating blogpost"
-        }
-    }
-
-    private Process runCurlCommand(String curlString) {
-        debugln "curlCommand = $curlString"
-        Process p = curlString.execute()
-
-        def outputStream = new StringBuffer()
-        def errorStream = new StringBuffer()
-        p.waitForProcessOutput(outputStream, errorStream)
-
-        debugln "$outputStream"
-        debugln "errorStream = $errorStream"
-        debugln "errorId = ${p.exitValue()}"
-        return p
-    }
-
-    def uploadTool(String toolpath) {
+    def uploadToolFromFile(String toolpath) {
         Console console = System.console()
-        String nexusUsername = console.readLine("Nexus username: ")
-        char[] nexusPassword = console.readPassword("Enter password for nexus: ")
 
-        String confluenceUsername = console.readLine("Confluence username: ")
-        char[] confluencePassword = console.readPassword("Enter password for confluence: ")
+        String username = null
+        char[] password = null
+        if (toolsRepository.isUserNameAndPasswordNeededForRepository()) {
+            username = console.readLine("$toolsRepository.repositoryName username: ")
+            password = console.readPassword("Enter password for $toolsRepository.repositoryName: ")
+        }
+
+        String confluenceUsername = null
+        char[] confluencePassword = null
+        if (confluenceWrapper != null) {
+            confluenceUsername = console.readLine("Confluence username: ")
+            confluencePassword = console.readPassword("Enter password for confluence: ")
+        }
 
         println "Uploading tool $toolpath"
 
@@ -173,35 +180,23 @@ class Devtool {
         def toolName = extractToolName(toolNameAndVersion)
         def toolVersion = extractToolVersion(toolNameAndVersion)
 
-        def uploadCommand = "curl --insecure -v -F r=$NEXUS_REPOSITORY -F hasPom=false -F e=zip -F g=devtool -F a=$toolName -F v=$toolVersion -F p=zip -F file=@$toolpath -u $nexusUsername:$nexusPassword https://ninja-nexus.oneadr.net/nexus/service/local/artifact/maven/content"
-        debugln "uploadCommand = $uploadCommand"
-        Process p = uploadCommand.execute()
 
-        def outputStream = new StringBuffer()
-        def errorStream = new StringBuffer()
-        p.waitForProcessOutput(outputStream, errorStream)
 
-        println "$outputStream"
-        debugln "errorStream = $errorStream"
-        debugln "errorId = ${p.exitValue()}"
-
-        if (p.exitValue() == 26) {
-            println "Could not open file: $toolpath"
-            return
-        } else if (errorStream.contains("401 Unauthorized")) {
-            println "Incorrect nexusPassword!"
-            return
-        } else if (p.exitValue() != 0) {
-            println "An unknown error occured while uploading tool."
+        try {
+            toolsRepository.uploadTool(toolName, toolVersion, toolpath, username, password)
+        } catch (CouldNotUploadException e) {
+            println(e.getMessage())
             return
         }
 
         println "creating and uploading new ToolsAndVersionsFile..."
         def toolsAndVersionsFile = buildToolsAndVersionsFile()
-        deleteOldToolsAndVersionsFile(nexusUsername, nexusPassword as String)
-        uploadToolsAndVersionsFile(nexusUsername, nexusPassword as String, toolsAndVersionsFile)
+        toolsRepository.deleteOldToolsAndVersionsFile(username, password as String)
+        toolsRepository.uploadToolsAndVersionsFile(username, password as String, toolsAndVersionsFile)
 
-        createBlogPost(toolName, toolVersion, confluenceUsername, confluencePassword.toString())
+        if (confluenceWrapper != null) {
+            confluenceWrapper.createBlogPost(toolName, toolVersion, confluenceUsername, confluencePassword.toString())
+        }
     }
 
     boolean verifyZipFile(String toolpath) {
@@ -228,8 +223,8 @@ class Devtool {
     }
 
     String extractToolVersion(String toolNameAndVersion) {
-        debugln "extractToolVersion $toolNameAndVersion"
-        String[] result = ""
+        debugger.debugln "extractToolVersion $toolNameAndVersion"
+        String[] result = new String[0]
         toolNameAndVersion.eachMatch("-([\\d.]+)") {
             result = it
         }
@@ -239,7 +234,7 @@ class Devtool {
 
     @SuppressWarnings("GroovyAssignabilityCheck")
     String extractToolName(String toolNameAndVersion) { // c:\\sdds\\devtool-111.11.zip
-        debugln "extractToolName $toolNameAndVersion"
+        debugger.debugln "extractToolName $toolNameAndVersion"
 
         def matcher = toolNameAndVersion =~ "(\\w+)"
         if (matcher.getCount() > 0) {
@@ -349,7 +344,7 @@ class Devtool {
     List<String> getRemoteSortedToolsList() {
         def sortedList = new LinkedList<String>()
 
-        def xmlStream = new URL(getToolsSourceDir()).openStream()
+        def xmlStream = new URL(toolsRepository.getToolsSourceDir()).openStream()
         def nodes = new XmlSlurper().parse(xmlStream)
 
         nodes.data.children().collect() { contentItem ->
@@ -404,31 +399,11 @@ class Devtool {
         return tempFile
     }
 
-    void uploadToolsAndVersionsFile(String nexusUserName, String nexusPassword, File buildToolsAndVersionsFile) {
-        def process = runCurlCommand("curl -v -u $nexusUserName:$nexusPassword --upload-file $buildToolsAndVersionsFile.absolutePath " + "$NEXUS_SERVER_URL/nexus/content/repositories/$NEXUS_REPOSITORY/devtool/toolsandversions/1.0/toolsandversions-1.0.txt")
-        if (process.exitValue() != 0) {
-            println "Problem with uploading ToolsAndVersionsFile"
-        }
-
-    }
-
-    void deleteOldToolsAndVersionsFile(String nexusUserName, String nexusPassword) {
-        def process = runCurlCommand("curl --request DELETE --user \"$nexusUserName:$nexusPassword\" $NEXUS_SERVER_URL/nexus/content/repositories/$NEXUS_REPOSITORY/devtool/toolsandversions/1.0/toolsandversions-1.0.txt")
-        if (process.exitValue() != 0) {
-            println "Problem with deleting old ToolsAndVersionsFile"
-       }
-    }
-
     String listTools() {
         def tempFile = File.createTempFile('devtool', 'txt')
         tempFile.deleteOnExit()
 
-        def process = runCurlCommand("curl $NEXUS_SERVER_URL/nexus/content/repositories/$NEXUS_REPOSITORY/devtool/toolsandversions/1.0/toolsandversions-1.0.txt --output " + tempFile.absolutePath)
-        if (process.exitValue() != 0) {
-            println "Problem with downloading the list of tools and versions"
-            System.exit(0)
-        }
-
+        toolsRepository.downloadToolsAndVersionsToTempfile(tempFile)
 
         def output = new StringBuilder()
 
@@ -500,8 +475,8 @@ class Devtool {
 
     int bashColumns() {
         try {
-            ProcessBuilder processBuilder = new ProcessBuilder("tput", "cols");
-            processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
+            ProcessBuilder processBuilder = new ProcessBuilder("tput", "cols")
+            processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT)
             def process = processBuilder.start()
             def output = process.in.text
             process.destroy()
@@ -509,14 +484,15 @@ class Devtool {
                 return output.toInteger()
             }
         } catch (all) {
+            debugger.debugln(all.getMessage())
         }
         return 0
     }
 
     int cmdColumns() {
         try {
-            ProcessBuilder processBuilder = new ProcessBuilder("cmd.exe", "/c", "mode con");
-            processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
+            ProcessBuilder processBuilder = new ProcessBuilder("cmd.exe", "/c", "mode con")
+            processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT)
             def process = processBuilder.start()
             def output = process.in.text
             process.destroy()
@@ -526,6 +502,7 @@ class Devtool {
                 return matcher.group(1).toInteger()
             }
         } catch (all) {
+            debugger.debugln(all.getMessage())
         }
         return 0
     }
@@ -540,7 +517,7 @@ class Devtool {
      * if tool has only this version - delete variable devtool_toolname <p/>
      */
     void uninstallTool(String toolName, String toolVersion) {
-        debugln "uninstall $toolName $toolVersion"
+        debugger.debugln "uninstall $toolName $toolVersion"
         String toolDir = getToolsDestinationDir() + sepChar + toolName + sepChar + toolVersion
 
         def toolDirFile = new File(toolDir)
@@ -577,21 +554,21 @@ class Devtool {
     }
 
     private void removeToolpathFromWindowsUserpath(String userPath, String toolName) {
-        debugln "addToolDependentPaths -> userPath before remove= $userPath"
+        debugger.debugln "addToolDependentPaths -> userPath before remove= $userPath"
         def cleanedUserPath = removeOldToolPaths(toolName, userPath)
-        debugln "addToolDependentPaths -> userPath after remove= $cleanedUserPath"
+        debugger.debugln "addToolDependentPaths -> userPath after remove= $cleanedUserPath"
 
         def setxCommand = "cmd /c setx path " + cleanedUserPath
-        debugln "addToolDependentPaths -> setxCommand = $setxCommand"
+        debugger.debugln "addToolDependentPaths -> setxCommand = $setxCommand"
         Process addToolPathProcess = setxCommand.execute()
-        debugln "addToolDependentPaths result: ${addToolPathProcess.text}"
+        debugger.debugln "addToolDependentPaths result: ${addToolPathProcess.text}"
     }
 
     private void deleteDevtoolVariable(String toolName) {
         def setxTool = "cmd /c setx devtool_$toolName \"\""
-        debugln "createUserToolVariable setxTool = $setxTool"
+        debugger.debugln "createUserToolVariable setxTool = $setxTool"
         Process deleteDevtoolVariableProcess = setxTool.execute()
-        debugln "createUserToolVariable result: ${deleteDevtoolVariableProcess.text}"
+        debugger.debugln "createUserToolVariable result: ${deleteDevtoolVariableProcess.text}"
     }
 
     void installTool(String toolName, String toolVersion) {
@@ -604,7 +581,7 @@ class Devtool {
             toolVersion = getLatestVersionForToolFromRemote(toolName)
         }
 
-        String sourceDir = getToolsSourceDir() + "/" + toolName + "/" + toolVersion
+        String sourceDir = toolsRepository.getToolsSourceDir() + "/" + toolName + "/" + toolVersion
         String destDir = getToolsDestinationDir() + sepChar + toolName
 
         validateDirs(sourceDir, getToolsDestinationDir())
@@ -674,7 +651,7 @@ class Devtool {
         createUserToolVariable(toolName, toolVersion)
 
         ToolSettings settings = downloadSettingsForTool(toolName)
-        debugln "Settings: $settings"
+        debugger.debugln "Settings: $settings"
 
         addToolDependentPaths(toolName, toolVersion, settings)
         addCustomToolVariables(toolName, toolVersion, settings)
@@ -685,9 +662,9 @@ class Devtool {
     ToolSettings downloadSettingsForTool(String toolName) {
         def settingsStream
         try {
-            settingsStream = new URL(getToolsSourceDir() + "/settings/$toolName/1/$toolName-1.xml").openStream()
+            settingsStream = new URL(toolsRepository.getToolsSourceDir() + "/settings/$toolName/1/$toolName-1.xml").openStream()
         } catch (FileNotFoundException ignore) {
-            debugln "No settings found for tool: $toolName"
+            debugger.debugln "No settings found for tool: $toolName"
             return new ToolSettings()
         }
 
@@ -695,12 +672,12 @@ class Devtool {
 
         def nodes = new XmlSlurper().parse(settingsStream)
         nodes.paths.path.collect().each { path ->
-            debugln "adding settings path: " + path.text()
+            debugger.debugln "adding settings path: " + path.text()
             settings.getPaths().add(path.text())
         }
 
         nodes.toolvars.toolvar.collect().each { toolVar ->
-            debugln "adding settings toolVar: " + toolVar.text()
+            debugger.debugln "adding settings toolVar: " + toolVar.text()
             settings.getToolVariables().add(toolVar.text())
         }
 
@@ -715,12 +692,12 @@ class Devtool {
 
             // remove old path
             userPath = removeOldToolPaths(toolName, userPath)
-            debugln "addToolDependentPaths -> userPath after remove= $userPath"
+            debugger.debugln "addToolDependentPaths -> userPath after remove= $userPath"
 
             def setxCommand = "cmd /c setx path " + userPath + pathSepChar + getToolsDestinationDir() + sepChar + toolName + sepChar + toolVersion + sepChar + pathToAdd + ";"
-            debugln "addToolDependentPaths -> setxCommand = $setxCommand"
+            debugger.debugln "addToolDependentPaths -> setxCommand = $setxCommand"
             Process p = setxCommand.execute()
-            debugln "addToolDependentPaths result: ${p.text}"
+            debugger.debugln "addToolDependentPaths result: ${p.text}"
         }
     }
 
@@ -728,22 +705,22 @@ class Devtool {
         settings.getToolVariables().each { pathToAdd ->
             def toolPath = getToolsDestinationDir() + sepChar + toolName + sepChar + toolVersion
             def setxCommand = "cmd /c setx " + pathToAdd + " " + toolPath
-            debugln "addCustomToolVariables -> setxCommand = $setxCommand"
+            debugger.debugln "addCustomToolVariables -> setxCommand = $setxCommand"
             Process p = setxCommand.execute()
-            debugln "addCustomToolVariables result: ${p.text}"
+            debugger.debugln "addCustomToolVariables result: ${p.text}"
         }
     }
 
     String removeOldToolPaths(String toolName, String userPath) {
         def toolPath = getToolsDestinationDir() + sepChar + toolName + sepChar
-        debugln "removeOldToolPaths toolpath: " + toolPath
+        debugger.debugln "removeOldToolPaths toolpath: " + toolPath
         return removeDirectoryFromPaths(toolPath, userPath)
     }
 
     String removeDirectoryFromPaths(String toolPath, String userPath) {
         def toolPathEscaped = toolPath.replace("\\", "\\\\") // if on windows
         def regEx = "" + pathSepChar + toolPathEscaped + "[\\d\\.\\w\\\\]*"
-        debugln "removeOldToolPaths regEx: " + regEx
+        debugger.debugln "removeOldToolPaths regEx: " + regEx
         userPath = userPath.replaceAll(regEx, "") // remove all path instances of the tool
         userPath = userPath.replaceAll("" + pathSepChar + pathSepChar, "" + pathSepChar)
         // remove all double pathSepChar with a single one
@@ -753,9 +730,9 @@ class Devtool {
     void createUserToolVariable(String toolName, String version) {
         def toolPath = getToolsDestinationDir() + sepChar + toolName + sepChar + version
         def setxTool = "cmd /c setx devtool_$toolName " + toolPath
-        debugln "createUserToolVariable setxTool = $setxTool"
+        debugger.debugln "createUserToolVariable setxTool = $setxTool"
         Process p = setxTool.execute()
-        debugln "createUserToolVariable result: ${p.text}"
+        debugger.debugln "createUserToolVariable result: ${p.text}"
     }
 
     def validateDirs(String sourceDir, String destDir) {
@@ -815,7 +792,7 @@ class Devtool {
 
         def versionsXml
         try {
-            versionsXml = new URL(getToolsSourceDir() + "/" + toolName).openStream()
+            versionsXml = new URL(toolsRepository.getToolsSourceDir() + "/" + toolName).openStream()
         } catch (FileNotFoundException ignore) {
             versionList.add("0")
             return versionList
@@ -888,17 +865,7 @@ class Devtool {
         return result
     }
 
-    String getToolsSourceDir() {
-        return "$NEXUS_SERVER_URL/nexus/service/local/repositories/$NEXUS_REPOSITORY/content/devtool"
-    }
-
     String getToolsDestinationDir() {
         return getUserDefinedVariable("devtool_tools")
-    }
-
-    def debugln(String debugString) {
-        if (debugOutput) {
-            println "DEBUG: " + debugString
-        }
     }
 }

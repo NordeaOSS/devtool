@@ -55,7 +55,7 @@ class NexusRepository implements ToolsRepository {
 
     @Override
     void uploadTool(String toolName, String toolVersion, String toolpath, String username, char[] password) {
-        def uploadCommand = "curl --insecure -v -F r=$nexusRepository -F hasPom=false -F e=zip -F g=devtool -F a=$toolName -F v=$toolVersion -F process=zip -F file=@$toolpath -u $username:$password https://ninja-nexus.oneadr.net/nexus/service/local/artifact/maven/content"
+        def uploadCommand = "curl --insecure -v -F r=$nexusRepository -F hasPom=false -F e=zip -F g=devtool -F a=$toolName -F v=$toolVersion -F process=zip -F file=@$toolpath -u $username:$password $nexusServerUrl/nexus/service/local/artifact/maven/content"
         debugger.debugln "uploadCommand = $uploadCommand"
         Process process = uploadCommand.execute()
 

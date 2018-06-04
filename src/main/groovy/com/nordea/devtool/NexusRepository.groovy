@@ -53,6 +53,9 @@ class NexusRepository implements ToolsRepository {
         return true
     }
 
+    // example for single file upload for nexus 3
+    // curl -v -u devtool:devtool --upload-file d:\hmm\devtool-1.37.zip http://localhost:8081/repository/devtool/dk/devtool/1.37/devtool-1.37.zip
+
     @Override
     void uploadTool(String toolName, String toolVersion, String toolpath, String username, char[] password) {
         def uploadCommand = "curl --insecure -v -F r=$nexusRepository -F hasPom=false -F e=zip -F g=devtool -F a=$toolName -F v=$toolVersion -F process=zip -F file=@$toolpath -u $username:$password $nexusServerUrl/nexus/service/local/artifact/maven/content"

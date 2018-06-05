@@ -5,6 +5,8 @@
  *
  */
 
+version '1.38'
+
 apply plugin: 'groovy'
 apply plugin: 'application'
 
@@ -19,7 +21,7 @@ allprojects {
 }
 
 dependencies {
-    compile 'org.codehaus.groovy:groovy-all:2.4.12'
+    compile 'org.codehaus.groovy:groovy-all:2.4.15'
     compile 'commons-cli:commons-cli:1.4'
     compile 'org.apache.ant:ant:1.9.4'
     compile 'org.fusesource.jansi:jansi:1.16'
@@ -34,10 +36,26 @@ test {
     }
 }
 
+task unzipJre (type: Copy){
+        from zipTree("./lib/jre-1.8.161.zip")
+        into "${buildDir}/jre"
+}
+jar.dependsOn unzipJre
+
+tasks.withType(CreateStartScripts) {
+    def tplName = 'src/main/resources/devtool.bat'
+    assert project.file(tplName).exists()
+    windowsStartScriptGenerator.template = resources.text.fromFile(tplName)
+}
+
 applicationDistribution.from("./lib") {
     include "curl.exe"
     include "curl-ca-bundle.crt"
     into("bin")
+}
+
+applicationDistribution.from("${buildDir}/jre") {
+    include "**/**"
 }
 
 applicationDistribution.from(".") {

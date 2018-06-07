@@ -1,4 +1,8 @@
 # Changelog
+- 1.40
+    - Bumped to version 1.40
+    - Added pull request "Version number alignement" from m1kah
+    - Added version to gradle build to be added to the distribution files
 - 1.37
     - Bumped version to 1.37, no code changes
 - 1.36

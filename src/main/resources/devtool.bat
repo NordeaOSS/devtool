@@ -16,7 +16,7 @@ set APP_HOME=%DIRNAME%..
 @rem Add default JVM options here. You can also use JAVA_OPTS and DEVTOOL_OPTS to pass JVM options to this script.
 set DEFAULT_JVM_OPTS=
 
-set JAVA_EXE="..\\jre\\bin\\java.exe"
+set JAVA_EXE="%DIRNAME%\\..\\jre\\bin\\java.exe"
 
 :init
 @rem Get command-line arguments, handling Windows variants

@@ -36,7 +36,7 @@ set CMD_LINE_ARGS=%*
 :execute
 @rem Setup the command line
 
-set CLASSPATH=%APP_HOME%\\lib\\devtool-1.38.jar;%APP_HOME%\\lib\\groovy-all-2.4.15.jar;%APP_HOME%\\lib\\commons-cli-1.4.jar;%APP_HOME%\\lib\\ant-1.9.4.jar;%APP_HOME%\\lib\\jansi-1.16.jar;%APP_HOME%\\lib\\ant-launcher-1.9.4.jar
+set CLASSPATH=%APP_HOME%\\lib\\devtool-1.40.jar;%APP_HOME%\\lib\\groovy-all-2.4.15.jar;%APP_HOME%\\lib\\commons-cli-1.4.jar;%APP_HOME%\\lib\\ant-1.9.4.jar;%APP_HOME%\\lib\\jansi-1.16.jar;%APP_HOME%\\lib\\ant-launcher-1.9.4.jar
 
 @rem Execute devtool
 "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %DEVTOOL_OPTS%  -classpath "%CLASSPATH%" com.nordea.devtool.Devtool %CMD_LINE_ARGS%
